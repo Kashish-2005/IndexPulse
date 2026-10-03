@@ -1,0 +1,15 @@
+pyproject.toml
+src/eindex/__init__.py
+src/eindex/analytics.py
+src/eindex/backtest.py
+src/eindex/config.py
+src/eindex/data.py
+src/eindex/optimizer.py
+src/eindex/pipeline.py
+src/eindex/risk.py
+src/eindex/signals.py
+src/enhanced_index.egg-info/PKG-INFO
+src/enhanced_index.egg-info/SOURCES.txt
+src/enhanced_index.egg-info/dependency_links.txt
+src/enhanced_index.egg-info/top_level.txt
+tests/test_config.py
