@@ -49,6 +49,8 @@ streamlit run app/streamlit_app.py
 
 Strict **point-in-time discipline**: signals computed at the close of day *t* are executed only at the close of day *t+1*.
 
+The dashboard includes a **My Portfolio** tab: upload a CSV of your holdings (ticker + market value in ₹), and the app compares your weights against the benchmark and the model portfolio — with active-weight charts, sector exposure breakdowns, and a turnover-capped rebalance suggestion. All processing is in-memory; your file is never stored.
+
 ---
 
 ## 2. Architecture
@@ -193,8 +195,8 @@ IndexPulse/
 │   ├── backtest.py        # Walk-forward engine
 │   ├── analytics.py       # Performance metrics
 │   └── pipeline.py        # Orchestration + CLI
-├── tests/                 # 37 tests (look-ahead, PSD, constraints, AppTest)
-├── app/streamlit_app.py   # Interactive dashboard (8 tabs)
+├── tests/                 # 42 tests (look-ahead, PSD, constraints, AppTest)
+├── app/streamlit_app.py   # Interactive dashboard (9 tabs)
 ├── .github/workflows/
 │   ├── ci.yml             # Ruff + mypy + pytest on push/PR
 │   └── rebalance.yml      # Monthly cron rebalance → commit results/
@@ -233,7 +235,7 @@ Key correctness guarantees enforced by the test suite:
 - **PSD floor** — all eigenvalues of the output covariance ≥1e-8.
 - **Constraint satisfaction** — `sum(w)==1`, `w≥0`, active weight, TE, and turnover all verified post-solve.
 - **Fallback ladder** — infeasible inputs escalate correctly to benchmark fallback.
-- **AppTest** — dashboard runs without exceptions in demo mode, with real fixtures, and with partial results.
+- **AppTest** — dashboard runs without exceptions in demo mode, with real fixtures, with partial results, and with valid/invalid portfolio uploads.
 
 ---
 

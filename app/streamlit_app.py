@@ -373,7 +373,7 @@ _build_header(m, demo, summary_json)
 tabs = st.tabs([
     "\U0001f4c8 Overview", "\U0001f6e1️ Risk", "⚖️ Active Positions",
     "\U0001f504 Turnover", "✅ Compliance", "\U0001f4cb Latest Trades",
-    "\U0001f4be Data", "ℹ️ About",
+    "\U0001f4be Data", "\U0001f4bc My Portfolio", "ℹ️ About",
 ])
 
 # ---- Overview
@@ -700,8 +700,223 @@ with tabs[6]:
     st.markdown('<div class="section-header">Performance summary</div>', unsafe_allow_html=True)
     st.dataframe(pd.Series(m, name="value").to_frame(), width="stretch")
 
-# ---- About
+# ---- My Portfolio
 with tabs[7]:
+    st.warning(
+        "**Disclaimer:** This is an educational analysis tool, not investment advice. "
+        "Past performance does not predict future results. "
+        "Consult a qualified financial advisor before making investment decisions."
+    )
+
+    _port_latest_dt = weights_all["date"].max()
+    _port_latest_w = weights_all[weights_all["date"] == _port_latest_dt].copy()
+    _nifty_tickers = set(_port_latest_w["ticker"].unique())
+
+    _sample_csv = (
+        "ticker,value_inr\n"
+        "RELIANCE,100000\n"
+        "TCS,80000\n"
+        "HDFCBANK,75000\n"
+        "INFY,60000\n"
+        "ICICIBANK,50000\n"
+    )
+    st.download_button(
+        "⬇ Download sample CSV template", _sample_csv.encode(),
+        "portfolio_template.csv", mime="text/csv",
+    )
+
+    _uploaded = st.file_uploader(
+        "Upload your portfolio CSV", type=["csv"],
+        help="CSV with columns: **ticker** and **value_inr** (market value in ₹)",
+        key="portfolio_csv_upload",
+    )
+
+    if _uploaded is not None:
+        _parse_ok = True
+        try:
+            _udf = pd.read_csv(_uploaded)
+        except Exception:
+            st.error("Could not read the file. Please upload a valid CSV.")
+            _parse_ok = False
+            _udf = pd.DataFrame()
+
+        if _parse_ok:
+            _col_map = {c.strip().lower(): c for c in _udf.columns}
+            if "ticker" not in _col_map or "value_inr" not in _col_map:
+                st.error("CSV must contain columns **ticker** and **value_inr**.")
+            else:
+                _udf = _udf.rename(columns={
+                    _col_map["ticker"]: "ticker",
+                    _col_map["value_inr"]: "value_inr",
+                })
+                _udf["value_inr"] = pd.to_numeric(_udf["value_inr"], errors="coerce")
+                _bad = _udf["value_inr"].isna() | (_udf["value_inr"] <= 0)
+                if _bad.any():
+                    st.warning(f"Dropped {_bad.sum()} row(s) with missing or non-positive values.")
+                    _udf = _udf[~_bad]
+
+                if _udf.empty:
+                    st.error("No valid rows remain after validation.")
+                else:
+                    _udf["ticker"] = _udf["ticker"].astype(str).str.strip().str.upper()
+                    _udf.loc[~_udf["ticker"].str.endswith(".NS"), "ticker"] += ".NS"
+
+                    _matched_mask = _udf["ticker"].isin(_nifty_tickers)
+                    _unmatched = _udf[~_matched_mask]
+                    _udf = _udf[_matched_mask].copy()
+
+                    if not _unmatched.empty:
+                        st.warning(
+                            f"**{len(_unmatched)} ticker(s) not in Nifty 50 universe** (excluded): "
+                            + ", ".join(_unmatched["ticker"].tolist())
+                        )
+
+                    if _udf.empty:
+                        st.error("No tickers matched the Nifty 50 universe.")
+                    else:
+                        _udf = _udf.groupby("ticker", as_index=False)["value_inr"].sum()
+                        _total_val = _udf["value_inr"].sum()
+                        _udf["my_weight"] = _udf["value_inr"] / _total_val
+
+                        _cmp = _port_latest_w[["ticker", "sector", "bench_weight"]].copy()
+                        _cmp = _cmp.merge(
+                            _port_latest_w[["ticker", "weight"]].rename(
+                                columns={"weight": "model_weight"}
+                            ),
+                            on="ticker",
+                        )
+                        _cmp = _cmp.merge(
+                            _udf[["ticker", "my_weight"]], on="ticker", how="left",
+                        )
+                        _cmp["my_weight"] = _cmp["my_weight"].fillna(0.0)
+                        _cmp["active_vs_bench"] = _cmp["my_weight"] - _cmp["bench_weight"]
+                        _cmp["diff_vs_model"] = _cmp["my_weight"] - _cmp["model_weight"]
+
+                        st.markdown(
+                            '<div class="section-header">Weight Comparison</div>',
+                            unsafe_allow_html=True,
+                        )
+                        _disp = _cmp[[
+                            "ticker", "sector", "my_weight", "bench_weight",
+                            "model_weight", "active_vs_bench", "diff_vs_model",
+                        ]].copy()
+                        _disp.columns = [
+                            "Ticker", "Sector", "My Weight", "Bench Weight",
+                            "Model Weight", "Active vs Bench", "Diff vs Model",
+                        ]
+                        _disp = _disp.sort_values("My Weight", ascending=False)
+                        st.dataframe(
+                            _disp.style.format({
+                                "My Weight": "{:.2%}",
+                                "Bench Weight": "{:.2%}",
+                                "Model Weight": "{:.2%}",
+                                "Active vs Bench": "{:+.2%}",
+                                "Diff vs Model": "{:+.2%}",
+                            }),
+                            width="stretch",
+                            hide_index=True,
+                        )
+
+                        _c1, _c2 = st.columns(2)
+
+                        _top_act = pd.concat([
+                            _cmp.nlargest(top_n, "active_vs_bench"),
+                            _cmp.nsmallest(top_n, "active_vs_bench"),
+                        ]).drop_duplicates("ticker").sort_values("active_vs_bench")
+
+                        _fig = go.Figure(go.Bar(
+                            x=_top_act["active_vs_bench"],
+                            y=_top_act["ticker"],
+                            orientation="h",
+                            marker_color=[
+                                GREEN if v >= 0 else RED
+                                for v in _top_act["active_vs_bench"]
+                            ],
+                            marker_line_width=0,
+                        ))
+                        _apply_plotly_theme(
+                            _fig, max(350, 22 * len(_top_act)),
+                        )
+                        _fig.update_layout(
+                            title=f"Top {top_n} over/underweights vs benchmark",
+                            xaxis_tickformat=".2%",
+                        )
+                        _c1.plotly_chart(_fig, width="stretch")
+
+                        _sec = _cmp.groupby("sector")[
+                            ["my_weight", "bench_weight"]
+                        ].sum()
+                        _fig2 = go.Figure()
+                        _fig2.add_bar(
+                            x=_sec.index,
+                            y=_sec["my_weight"],
+                            name="My Portfolio",
+                            marker_color=PORT_COLOR,
+                        )
+                        _fig2.add_bar(
+                            x=_sec.index,
+                            y=_sec["bench_weight"],
+                            name="Benchmark",
+                            marker_color=BENCH_COLOR,
+                        )
+                        _apply_plotly_theme(_fig2, 350)
+                        _fig2.update_layout(
+                            title="Sector exposure vs benchmark",
+                            barmode="group",
+                            yaxis_tickformat=".0%",
+                        )
+                        _c2.plotly_chart(_fig2, width="stretch")
+
+                        st.markdown(
+                            '<div class="section-header">Suggested Rebalance</div>',
+                            unsafe_allow_html=True,
+                        )
+                        _reb = _cmp[["ticker", "my_weight", "model_weight"]].copy()
+                        _reb["raw_trade"] = _reb["model_weight"] - _reb["my_weight"]
+                        _raw_to = _reb["raw_trade"].abs().sum() / 2
+
+                        if _raw_to > to_lim and _raw_to > 0:
+                            _scale = to_lim / _raw_to
+                            _reb["trade_pct"] = _reb["raw_trade"] * _scale
+                            st.info(
+                                f"Trades scaled to respect {to_lim:.0%} turnover limit "
+                                f"(raw one-way turnover: {_raw_to:.1%})."
+                            )
+                        else:
+                            _reb["trade_pct"] = _reb["raw_trade"]
+
+                        _reb["trade_inr"] = _reb["trade_pct"] * _total_val
+                        _trades = _reb[
+                            _reb["trade_pct"].abs() > 1e-6
+                        ].sort_values("trade_pct", ascending=False)
+
+                        if _trades.empty:
+                            st.success(
+                                "Your portfolio already matches the model portfolio!"
+                            )
+                        else:
+                            _trades_disp = _trades[
+                                ["ticker", "trade_pct", "trade_inr"]
+                            ].copy()
+                            _trades_disp.columns = [
+                                "Ticker", "Trade (%)", "Trade (₹)",
+                            ]
+                            st.dataframe(
+                                _trades_disp.style.format({
+                                    "Trade (%)": "{:+.2%}",
+                                    "Trade (₹)": "₹{:+,.0f}",
+                                }),
+                                width="stretch",
+                                hide_index=True,
+                            )
+
+                        st.info(
+                            "\U0001f512 **Privacy:** Your file is not stored. "
+                            "All processing happens in memory only."
+                        )
+
+# ---- About
+with tabs[8]:
     st.markdown("""
 ### Methodology
 
