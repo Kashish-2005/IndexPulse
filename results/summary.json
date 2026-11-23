@@ -1,0 +1,17 @@
+{
+  "cagr": 0.1625885577493804,
+  "cagr_benchmark": 0.1595027718031241,
+  "active_return": 0.0027748417198371006,
+  "tracking_error": 0.015386259524570527,
+  "information_ratio": 0.1803454384352427,
+  "sharpe": 1.0204801557914163,
+  "beta": 0.9996676656576567,
+  "max_drawdown": -0.3609720730039566,
+  "total_turnover": 17.69838063441479,
+  "avg_turnover": 0.1487258876841579,
+  "n_rebalances": 119,
+  "n_days": 2423,
+  "generated_at": "2026-11-23T10:54:08Z",
+  "data_start": "2017-02-01",
+  "data_end": "2026-11-23"
+}

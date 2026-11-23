@@ -5,6 +5,4 @@ __pycache__/
 .ruff_cache/
 data/cache/
 *.parquet
-results/*.csv
-results/*.json
 !results/.gitkeep
