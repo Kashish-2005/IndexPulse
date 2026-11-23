@@ -14,6 +14,10 @@ max_turnover_oneway: 0.20
 cost_bps: 10.0
 min_weight: 0.0
 random_seed: 42
+reviewed_extreme_moves:
+  - ticker: "INDUSINDBK.NS"
+    date: "2020-03-26"  # 45% single-day rally; verified real market event post COVID crash
+
 tickers:
   - "ADANIENT.NS"
   - "ADANIPORTS.NS"

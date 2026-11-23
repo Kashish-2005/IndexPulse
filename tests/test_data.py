@@ -1,5 +1,6 @@
 """Tests for the data layer module."""
 
+import logging
 from unittest.mock import MagicMock, patch
 
 import numpy as np
@@ -121,6 +122,34 @@ def test_load_sectors_fallback(tmp_path, monkeypatch):
         assert res["S1"] == "Energy"
         assert res["S2"] == "Tech"
         assert res["S3"] == "Other"
+
+
+def test_reviewed_extreme_move_logs_info_not_warning(tmp_path, monkeypatch, caplog):
+    """Reviewed moves log at INFO; unreviewed >40% moves still log at WARNING."""
+    monkeypatch.setattr("eindex.data.CACHE_FILE", tmp_path / "cache_reviewed.parquet")
+    dates = pd.date_range("2023-01-01", periods=3, freq="D")
+    df = pd.DataFrame(
+        {
+            "T1": [100.0, 145.0, 145.0],  # 45% move on 2023-01-02 — reviewed
+            "T2": [200.0, 200.0, 290.0],  # 45% move on 2023-01-03 — NOT reviewed
+        },
+        index=dates,
+    )
+
+    reviewed = {("T1", "2023-01-02")}
+    with patch("yfinance.download", return_value={"Adj Close": df}):
+        with caplog.at_level(logging.DEBUG, logger="eindex.data"):
+            load_prices(["T1", "T2"], "2023-01-01", reviewed_moves=reviewed)
+
+    messages = [(r.levelname, r.message) for r in caplog.records]
+    t1_records = [(lvl, msg) for lvl, msg in messages if "T1" in msg and "2023-01-02" in msg]
+    t2_records = [(lvl, msg) for lvl, msg in messages if "T2" in msg and "2023-01-03" in msg]
+
+    assert t1_records, "Expected a log record for the T1 reviewed move"
+    assert all(lvl == "INFO" for lvl, _ in t1_records), f"T1 reviewed move should log INFO, got {t1_records}"
+
+    assert t2_records, "Expected a log record for the T2 unreviewed move"
+    assert all(lvl == "WARNING" for lvl, _ in t2_records), f"T2 unreviewed move should log WARNING, got {t2_records}"
 
 
 def test_build_benchmark_weights(sample_prices):

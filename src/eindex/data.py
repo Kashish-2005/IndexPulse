@@ -23,10 +23,21 @@ DEFAULT_SHARES = 1e9
 WEIGHT_TOLERANCE = 1e-6
 
 
-def validate_and_clean_prices(df: pd.DataFrame) -> pd.DataFrame:
-    """Validate price data: drop >5% missing, forward-fill <=3 days, check NaNs and anomalies."""
+def validate_and_clean_prices(
+    df: pd.DataFrame,
+    reviewed_moves: set[tuple[str, str]] | None = None,
+) -> pd.DataFrame:
+    """Validate price data: drop >5% missing, forward-fill <=3 days, check NaNs and anomalies.
+
+    Args:
+        df: Price DataFrame (T x N).
+        reviewed_moves: Set of (ticker, "YYYY-MM-DD") pairs confirmed as genuine market events.
+            Moves in this set are logged at INFO; all others at WARNING.
+    """
     if df.empty:
         raise ValueError("Input price DataFrame is empty.")
+
+    reviewed_moves = reviewed_moves or set()
 
     # 1. Validation: Drop tickers with > 5% missing data
     missing_pct = df.isnull().mean()
@@ -50,18 +61,33 @@ def validate_and_clean_prices(df: pd.DataFrame) -> pd.DataFrame:
         nan_cols = df.columns[df.isnull().any()].tolist()
         raise ValueError(f"Data contains NaNs after cleaning in columns: {nan_cols}")
 
-    # 4. Volatility check
+    # 4. Volatility check — log per (ticker, date), INFO if reviewed else WARNING
     returns = df.pct_change().abs()
-    if (returns > VOLATILITY_THRESHOLD).any().any():
-        logger.warning(
-            "Extreme price movement (>%d%%) detected in returns.",
-            int(VOLATILITY_THRESHOLD * 100),
-        )
+    extreme = returns > VOLATILITY_THRESHOLD
+    if extreme.any().any():
+        for ticker in extreme.columns[extreme.any()]:
+            for date in extreme.index[extreme[ticker]]:
+                date_str = pd.Timestamp(date).strftime("%Y-%m-%d")
+                size = returns.loc[date, ticker]
+                if (ticker, date_str) in reviewed_moves:
+                    logger.info(
+                        "Reviewed extreme move: %s on %s (%.1f%%) — verified real market event.",
+                        ticker, date_str, size * 100,
+                    )
+                else:
+                    logger.warning(
+                        "Extreme price movement: %s on %s (%.1f%%) — please verify.",
+                        ticker, date_str, size * 100,
+                    )
 
     return df
 
 
-def load_prices(tickers: list[str], start: str) -> pd.DataFrame:
+def load_prices(
+    tickers: list[str],
+    start: str,
+    reviewed_moves: set[tuple[str, str]] | None = None,
+) -> pd.DataFrame:
     """Fetch adjusted close prices with caching and strict validation."""
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -77,7 +103,7 @@ def load_prices(tickers: list[str], start: str) -> pd.DataFrame:
         available = [t for t in tickers if t in df.columns]
         if available:
             df = df.loc[start:, available]
-            return validate_and_clean_prices(df)
+            return validate_and_clean_prices(df, reviewed_moves)
 
     logger.info("Fetching prices from yfinance for %d tickers", len(tickers))
     raw_df = yf.download(tickers, start=start, progress=False, group_by="column", auto_adjust=True)
@@ -108,7 +134,7 @@ def load_prices(tickers: list[str], start: str) -> pd.DataFrame:
     df.index = pd.to_datetime(df.index)
     df.sort_index(inplace=True)
 
-    df = validate_and_clean_prices(df)
+    df = validate_and_clean_prices(df, reviewed_moves)
     df.to_parquet(CACHE_FILE)
     return df
 

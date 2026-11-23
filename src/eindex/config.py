@@ -4,6 +4,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+import pandas as pd
 import yaml
 from pydantic import BaseModel, Field, field_validator, model_validator
 
@@ -23,6 +24,20 @@ class SignalWeights(BaseModel):
         return self
 
 
+class ReviewedExtremeMove(BaseModel):
+    ticker: str
+    date: str = Field(description="Date of verified extreme move in YYYY-MM-DD format")
+
+    @field_validator("date")
+    @classmethod
+    def validate_date_format(cls, v: str) -> str:
+        try:
+            pd.Timestamp(v)
+        except Exception as err:
+            raise ValueError(f"date must be a valid date string, got '{v}'") from err
+        return v
+
+
 class Config(BaseModel):
     start_date: str
     rebalance_freq: str
@@ -38,6 +53,7 @@ class Config(BaseModel):
     min_weight: float = Field(ge=0.0, le=1.0)
     random_seed: int
     tickers: list[str]
+    reviewed_extreme_moves: list[ReviewedExtremeMove] = Field(default_factory=list)
 
     @field_validator("tickers")
     @classmethod

@@ -9,6 +9,7 @@ on:
 jobs:
   lint-and-test:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -23,9 +24,32 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install -e .
+          pip install mypy pytest-cov
 
-      - name: Run Ruff Lint
+      - name: Ruff lint
         run: ruff check .
 
-      - name: Run Tests
-        run: pytest -q
+      - name: Ruff format check
+        run: ruff format --check .
+
+      - name: Mypy (non-strict)
+        run: |
+          mypy src/eindex \
+            --ignore-missing-imports \
+            --no-strict-optional \
+            --allow-untyped-defs \
+            --allow-untyped-calls
+
+      - name: Pytest with coverage
+        run: |
+          pytest -q \
+            --cov=eindex \
+            --cov-report=term-missing \
+            --cov-report=xml:coverage.xml \
+            --cov-fail-under=70
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage.xml
