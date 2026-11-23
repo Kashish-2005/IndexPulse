@@ -115,9 +115,7 @@ def test_costs_reduce_returns():
 
     assert len(diags) > 0, "Expected at least one rebalance"
     total_cost = sum(d.get("cost_deducted", 0.0) for d in diags)
-    assert total_cost > 1e-6, (
-        "With nonzero alpha and cost_bps, costs should have been deducted"
-    )
+    assert total_cost > 1e-6, "With nonzero alpha and cost_bps, costs should have been deducted"
 
     # Deducting a positive cost from daily returns strictly reduces cumulative return
     # vs the same weight sequence without cost deduction.
@@ -148,11 +146,13 @@ def test_sanity_warnings(caplog):
     # Large mean active return with small noise → IR >> 1.5
     port_ret = bench_ret + 0.002 + rng.normal(0, 0.0005, n)
 
-    returns_df = pd.DataFrame({
-        "date": pd.date_range("2020-01-01", periods=n, freq="B"),
-        "portfolio": port_ret,
-        "benchmark": bench_ret,
-    })
+    returns_df = pd.DataFrame(
+        {
+            "date": pd.date_range("2020-01-01", periods=n, freq="B"),
+            "portfolio": port_ret,
+            "benchmark": bench_ret,
+        }
+    )
 
     with caplog.at_level(logging.WARNING, logger="eindex.analytics"):
         metrics = compute_metrics(returns_df)
@@ -168,11 +168,13 @@ def test_low_te_warning(caplog):
     bench_ret = rng.normal(0.0004, 0.01, n)
     port_ret = bench_ret + rng.normal(0, 0.0001, n)
 
-    returns_df = pd.DataFrame({
-        "date": pd.date_range("2020-01-01", periods=n, freq="B"),
-        "portfolio": port_ret,
-        "benchmark": bench_ret,
-    })
+    returns_df = pd.DataFrame(
+        {
+            "date": pd.date_range("2020-01-01", periods=n, freq="B"),
+            "portfolio": port_ret,
+            "benchmark": bench_ret,
+        }
+    )
 
     with caplog.at_level(logging.WARNING, logger="eindex.analytics"):
         metrics = compute_metrics(returns_df)
@@ -206,7 +208,7 @@ def test_warmup_trim_starts_after_first_rebalance():
     total_days = len(returns_df)
     assert zero_days / total_days < 0.05, (
         f"Too many zero-active-return days: {zero_days}/{total_days} = "
-        f"{zero_days/total_days:.1%} (expected < 5%)"
+        f"{zero_days / total_days:.1%} (expected < 5%)"
     )
 
 
@@ -252,10 +254,13 @@ tickers: [A, B, C, D]
             patch("eindex.pipeline.load_prices", return_value=prices),
             patch("eindex.pipeline.load_market_caps", return_value=shares),
             patch("eindex.pipeline.load_sectors", return_value=sectors_s),
-            patch("eindex.pipeline.build_benchmark_weights", return_value=pd.DataFrame(
-                {t: [0.25] for t in TICKERS},
-                index=[prices.index[0]],
-            )),
+            patch(
+                "eindex.pipeline.build_benchmark_weights",
+                return_value=pd.DataFrame(
+                    {t: [0.25] for t in TICKERS},
+                    index=[prices.index[0]],
+                ),
+            ),
         ):
             summary = run_all(str(cfg_path))
     finally:
@@ -267,7 +272,9 @@ tickers: [A, B, C, D]
     assert "data_end" in summary, "summary must contain 'data_end'"
 
     # Check generated_at is a valid UTC ISO timestamp ending in Z
-    assert summary["generated_at"].endswith("Z"), f"generated_at should end with Z: {summary['generated_at']}"
+    assert summary["generated_at"].endswith("Z"), (
+        f"generated_at should end with Z: {summary['generated_at']}"
+    )
 
     # Check data_start < data_end
     assert summary["data_start"] < summary["data_end"], "data_start must be before data_end"

@@ -67,7 +67,9 @@ def test_weights_sum_to_one_and_nonneg():
 def test_realized_te_within_limit():
     cfg = _Cfg(max_te_annual=0.03)
     alpha = pd.Series([0.03, -0.02, 0.01, -0.01], index=TICKERS)
-    w, diag = optimize_portfolio(alpha, _cov_diagonal(), _equal_bench(), _equal_bench(), SECTORS, cfg)
+    w, diag = optimize_portfolio(
+        alpha, _cov_diagonal(), _equal_bench(), _equal_bench(), SECTORS, cfg
+    )
 
     assert diag["realized_te"] <= cfg.max_te_annual + 1e-6
 
@@ -84,7 +86,9 @@ def test_active_weight_within_limit():
 def test_turnover_within_limit():
     cfg = _Cfg(max_turnover_oneway=0.20)
     alpha = pd.Series([0.04, -0.02, 0.01, -0.01], index=TICKERS)
-    w, diag = optimize_portfolio(alpha, _cov_diagonal(), _equal_bench(), _equal_bench(), SECTORS, cfg)
+    w, diag = optimize_portfolio(
+        alpha, _cov_diagonal(), _equal_bench(), _equal_bench(), SECTORS, cfg
+    )
 
     assert diag["turnover"] <= cfg.max_turnover_oneway + 1e-6
 

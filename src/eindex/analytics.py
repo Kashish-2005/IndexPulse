@@ -39,7 +39,11 @@ def compute_metrics(returns_df: pd.DataFrame) -> dict:
     tracking_error = np.std(active, ddof=1) * np.sqrt(TRADING_DAYS) if n_days > 1 else 0.0
     information_ratio = active_return / tracking_error if tracking_error > 1e-10 else 0.0
 
-    sharpe = (np.mean(port) * TRADING_DAYS) / (np.std(port, ddof=1) * np.sqrt(TRADING_DAYS)) if np.std(port, ddof=1) > 1e-10 else 0.0
+    sharpe = (
+        (np.mean(port) * TRADING_DAYS) / (np.std(port, ddof=1) * np.sqrt(TRADING_DAYS))
+        if np.std(port, ddof=1) > 1e-10
+        else 0.0
+    )
 
     bench_var = np.var(bench, ddof=1)
     beta = np.cov(port, bench, ddof=1)[0, 1] / bench_var if bench_var > 1e-10 else 1.0
@@ -63,6 +67,8 @@ def compute_metrics(returns_df: pd.DataFrame) -> dict:
     if abs(information_ratio) > 1.5:
         logger.warning("Information ratio %.2f exceeds 1.5 — verify results.", information_ratio)
     if 0 < tracking_error < 0.005:
-        logger.warning("Tracking error %.4f is below 0.5%% — portfolio may be too passive.", tracking_error)
+        logger.warning(
+            "Tracking error %.4f is below 0.5%% — portfolio may be too passive.", tracking_error
+        )
 
     return metrics

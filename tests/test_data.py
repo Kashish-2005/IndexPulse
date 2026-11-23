@@ -146,10 +146,14 @@ def test_reviewed_extreme_move_logs_info_not_warning(tmp_path, monkeypatch, capl
     t2_records = [(lvl, msg) for lvl, msg in messages if "T2" in msg and "2023-01-03" in msg]
 
     assert t1_records, "Expected a log record for the T1 reviewed move"
-    assert all(lvl == "INFO" for lvl, _ in t1_records), f"T1 reviewed move should log INFO, got {t1_records}"
+    assert all(lvl == "INFO" for lvl, _ in t1_records), (
+        f"T1 reviewed move should log INFO, got {t1_records}"
+    )
 
     assert t2_records, "Expected a log record for the T2 unreviewed move"
-    assert all(lvl == "WARNING" for lvl, _ in t2_records), f"T2 unreviewed move should log WARNING, got {t2_records}"
+    assert all(lvl == "WARNING" for lvl, _ in t2_records), (
+        f"T2 unreviewed move should log WARNING, got {t2_records}"
+    )
 
 
 def test_build_benchmark_weights(sample_prices):

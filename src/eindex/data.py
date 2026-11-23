@@ -72,12 +72,16 @@ def validate_and_clean_prices(
                 if (ticker, date_str) in reviewed_moves:
                     logger.info(
                         "Reviewed extreme move: %s on %s (%.1f%%) — verified real market event.",
-                        ticker, date_str, size * 100,
+                        ticker,
+                        date_str,
+                        size * 100,
                     )
                 else:
                     logger.warning(
                         "Extreme price movement: %s on %s (%.1f%%) — please verify.",
-                        ticker, date_str, size * 100,
+                        ticker,
+                        date_str,
+                        size * 100,
                     )
 
     return df

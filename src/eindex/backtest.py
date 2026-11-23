@@ -54,7 +54,9 @@ def run_backtest(
         returns_df columns: date, portfolio, benchmark
         weights_df columns: date, ticker, sector, weight, bench_weight
     """
-    tickers = sorted(prices.columns.intersection(benchmark_weights.index).intersection(sectors.index))
+    tickers = sorted(
+        prices.columns.intersection(benchmark_weights.index).intersection(sectors.index)
+    )
     prices = prices[tickers].copy()
     benchmark_weights = benchmark_weights.loc[tickers]
     benchmark_weights = benchmark_weights / benchmark_weights.sum()
@@ -116,13 +118,15 @@ def run_backtest(
                 cost = 0.0
 
             for t_i, ticker in enumerate(tickers):
-                all_weights.append({
-                    "date": date,
-                    "ticker": ticker,
-                    "sector": sectors[ticker],
-                    "weight": w_port[t_i],
-                    "bench_weight": w_bench[t_i],
-                })
+                all_weights.append(
+                    {
+                        "date": date,
+                        "ticker": ticker,
+                        "sector": sectors[ticker],
+                        "weight": w_port[t_i],
+                        "bench_weight": w_bench[t_i],
+                    }
+                )
         else:
             cost = 0.0
 
@@ -141,11 +145,13 @@ def run_backtest(
         w_port = _drift_weights(w_port, ret)
         w_bench = _drift_weights(w_bench, ret)
 
-    returns_df = pd.DataFrame({
-        "date": return_dates,
-        "portfolio": port_returns,
-        "benchmark": bench_returns,
-    })
+    returns_df = pd.DataFrame(
+        {
+            "date": return_dates,
+            "portfolio": port_returns,
+            "benchmark": bench_returns,
+        }
+    )
 
     weights_df = pd.DataFrame(all_weights)
 

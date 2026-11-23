@@ -44,12 +44,14 @@ def _make_fixture(tmp: Path) -> None:
             rows.append({"date": d, "ticker": t, "sector": s, "weight": w, "bench_weight": bwi})
     pd.DataFrame(rows).to_csv(res / "weights.csv", index=False)
 
-    trades = pd.DataFrame({
-        "ticker": tickers[:4],
-        "current_weight": [0.12, 0.08, 0.11, 0.09],
-        "target_weight": [0.10, 0.10, 0.10, 0.10],
-        "trade": [-0.02, 0.02, -0.01, 0.01],
-    })
+    trades = pd.DataFrame(
+        {
+            "ticker": tickers[:4],
+            "current_weight": [0.12, 0.08, 0.11, 0.09],
+            "target_weight": [0.10, 0.10, 0.10, 0.10],
+            "trade": [-0.02, 0.02, -0.01, 0.01],
+        }
+    )
     trades.to_csv(res / "latest_trades.csv", index=False)
 
     summary = {"cagr": 0.08, "tracking_error": 0.02, "n_days": 300}

@@ -56,12 +56,14 @@ def run_all(config_path: str = "config.yaml") -> dict:
     else:
         last_date = weights_df["date"].max()
         latest = weights_df[weights_df["date"] == last_date].set_index("ticker")
-        latest_trades = pd.DataFrame({
-            "ticker": latest.index,
-            "current_weight": latest["weight"].values,
-            "target_weight": latest["bench_weight"].values,
-            "trade": latest["bench_weight"].values - latest["weight"].values,
-        })
+        latest_trades = pd.DataFrame(
+            {
+                "ticker": latest.index,
+                "current_weight": latest["weight"].values,
+                "target_weight": latest["bench_weight"].values,
+                "trade": latest["bench_weight"].values - latest["weight"].values,
+            }
+        )
     latest_trades.to_csv(RESULTS_DIR / "latest_trades.csv", index=False)
 
     summary = {
@@ -69,14 +71,21 @@ def run_all(config_path: str = "config.yaml") -> dict:
         "n_rebalances": len(diagnostics),
         "n_days": len(returns_df),
         "generated_at": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "data_start": returns_df["date"].min().strftime("%Y-%m-%d") if not returns_df.empty else None,
+        "data_start": returns_df["date"].min().strftime("%Y-%m-%d")
+        if not returns_df.empty
+        else None,
         "data_end": returns_df["date"].max().strftime("%Y-%m-%d") if not returns_df.empty else None,
     }
     with open(RESULTS_DIR / "summary.json", "w", encoding="utf-8") as f:
         json.dump(summary, f, indent=2, default=str)
 
     logger.info("Results written to %s/", RESULTS_DIR)
-    logger.info("Summary: CAGR=%.2f%%, TE=%.2f%%, IR=%.2f", metrics["cagr"] * 100, metrics["tracking_error"] * 100, metrics["information_ratio"])
+    logger.info(
+        "Summary: CAGR=%.2f%%, TE=%.2f%%, IR=%.2f",
+        metrics["cagr"] * 100,
+        metrics["tracking_error"] * 100,
+        metrics["information_ratio"],
+    )
 
     return summary
 

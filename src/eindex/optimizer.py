@@ -122,13 +122,20 @@ def optimize_portfolio(
 
     for attempt in ladder:
         prob, w_var = _build_and_solve(
-            alpha_arr, L, w_bench_arr, w_prev_arr,
-            sector_ids, unique_sectors, cfg,
+            alpha_arr,
+            L,
+            w_bench_arr,
+            w_prev_arr,
+            sector_ids,
+            unique_sectors,
+            cfg,
             turnover_mult=attempt["turnover_mult"],
             sector_mult=attempt["sector_mult"],
         )
         if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
-            logger.info("Optimizer converged at step '%s' (status=%s).", attempt["step"], prob.status)
+            logger.info(
+                "Optimizer converged at step '%s' (status=%s).", attempt["step"], prob.status
+            )
             w_arr = np.array(w_var.value).flatten()
             w_arr = np.where(w_arr > -_CLIP_TOL, np.maximum(w_arr, 0.0), w_arr)
             w_arr = w_arr / w_arr.sum()
@@ -150,7 +157,9 @@ def optimize_portfolio(
             }
             return weights, diag
 
-        logger.warning("Step '%s' infeasible (status=%s), trying next.", attempt["step"], prob.status)
+        logger.warning(
+            "Step '%s' infeasible (status=%s), trying next.", attempt["step"], prob.status
+        )
 
     logger.warning("All relaxation steps failed; returning benchmark weights.")
     weights = pd.Series(w_bench_arr, index=tickers, name="weight")
