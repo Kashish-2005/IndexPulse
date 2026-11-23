@@ -115,12 +115,12 @@ def optimize_portfolio(
 
     # Fallback ladder
     ladder = [
-        {"turnover_mult": 1.0, "sector_mult": 1.0, "step": "optimal"},
-        {"turnover_mult": 2.0, "sector_mult": 1.0, "step": "relax_turnover_x2"},
-        {"turnover_mult": 2.0, "sector_mult": 1.5, "step": "relax_sector_x1.5"},
+        (1.0, 1.0, "optimal"),
+        (2.0, 1.0, "relax_turnover_x2"),
+        (2.0, 1.5, "relax_sector_x1.5"),
     ]
 
-    for attempt in ladder:
+    for to_mult, sec_mult, step in ladder:
         prob, w_var = _build_and_solve(
             alpha_arr,
             L,
@@ -129,12 +129,12 @@ def optimize_portfolio(
             sector_ids,
             unique_sectors,
             cfg,
-            turnover_mult=attempt["turnover_mult"],
-            sector_mult=attempt["sector_mult"],
+            turnover_mult=to_mult,
+            sector_mult=sec_mult,
         )
         if prob.status in (cp.OPTIMAL, cp.OPTIMAL_INACCURATE):
             logger.info(
-                "Optimizer converged at step '%s' (status=%s).", attempt["step"], prob.status
+                "Optimizer converged at step '%s' (status=%s).", step, prob.status
             )
             w_arr = np.array(w_var.value).flatten()
             w_arr = np.where(w_arr > -_CLIP_TOL, np.maximum(w_arr, 0.0), w_arr)
@@ -150,7 +150,7 @@ def optimize_portfolio(
             weights = pd.Series(w_arr, index=tickers, name="weight")
             diag = {
                 "status": prob.status,
-                "step": attempt["step"],
+                "step": step,
                 "realized_te": realized_te,
                 "turnover": turnover,
                 "objective": float(prob.value),
@@ -158,7 +158,7 @@ def optimize_portfolio(
             return weights, diag
 
         logger.warning(
-            "Step '%s' infeasible (status=%s), trying next.", attempt["step"], prob.status
+            "Step '%s' infeasible (status=%s), trying next.", step, prob.status
         )
 
     logger.warning("All relaxation steps failed; returning benchmark weights.")
